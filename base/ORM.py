@@ -21,4 +21,4 @@ class BrotherCryptoBot:
             self.session.close()
 
     def check_user(self, user_id):
-        return bool(self.session.query(Users.user_id).filter(Users.user_id == user_id).all()[0][0])
+        return self.session.query(Users.user_id).filter(Users.user_id == user_id).all()[0][0]
