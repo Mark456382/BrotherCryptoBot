@@ -106,33 +106,37 @@ async def successful_payment(message: types.Message):
     payment_info = message.successful_payment.to_python()
     for k, v in payment_info.items():
         print(f"{k} = {v}")
-
+    pay = message.successful_payment.total_amount // 100
+    if pay == 150:
+        db.set_tarif(user_id=message.from_user.id, tarif=1)
+    elif pay == 500:
+        db.set_tarif(user_id=message.from_user.id, tarif=2)
+    else:
+        db.set_tarif(user_id=message.from_user.id, tarif=3)
     await bot.send_message(message.chat.id,
-                           f"Платеж на сумму {message.successful_payment.total_amount // 100} {message.successful_payment.currency} прошел успешно!!!")
-
-
-# run long-polling
-if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=False)
+                            f"Платеж на сумму {pay} {message.successful_payment.currency} прошел успешно!!!")
 # ---------------------------------------------------------------------------
 
 
 @dp.message_handler(Text('Мой тариф ⏳'))
 async def my_tarif(message: types.Message):
-    tar = None
-    await message.answer(f'Ваш тариф: {tar}')
+    tar = db.get_tarif(user_id=message.from_user.id)
+    await message.answer(f'Ваш тариф: {tar} уровня' if tar != None else 'Вы еще не приобрели тариф') 
 
 
 @dp.message_handler(Text('Отзывы 📖'))
 async def answers(message: types.Message):
-    link = 'link'
-    await message.answer(f'Канал с отзывами: {link}')
+    link = 'отзывы'
+    await message.answer(f'Канал с отзывами: @{link}')
 
 
 @dp.message_handler(Text('Обучающие курсы 👨‍💻'))
 async def kurs(message: types.Message):
-    await message.answer('Для получения доступа к курсам нужно обладать подпиской 2 или 3 уровня')
-    await message.answer('Канал с обучающими уроками и курсами - @канал')
+    tar = db.get_tarif(user_id=message.from_user.id)
+    if tar == 1:
+        await message.answer('Для получения доступа к курсам нужно обладать подпиской 2 или 3 уровня')
+    else:
+        await message.answer('Канал с обучающими уроками и курсами - @канал')
 
 
 if __name__ == '__main__':

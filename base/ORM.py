@@ -21,4 +21,12 @@ class BrotherCryptoBot:
             self.session.close()
 
     def check_user(self, user_id):
-        return self.session.query(Users.user_id).filter(Users.user_id == user_id).all()[0][0]
+        return self.session.query(Users.user_id).filter(Users.user_id == user_id).all()
+
+    def set_tarif(self, user_id, tarif):
+        obj =  self.session.query(Users).filter(Users.user_id == user_id).first()
+        obj.tarif = tarif
+        self.session.commit()
+
+    def get_tarif(self, user_id):
+        return self.session.query(Users.tarif).filter(Users.user_id == user_id).all()[0][0]
