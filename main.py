@@ -1,18 +1,25 @@
+import time
 import buttons
-import asyncio
+import messages as mg
 from base.ORM import BrotherCryptoBot
+from threading import Thread
 from config import TOKEN, PAY_TOKEN
 from aiogram.dispatcher.filters import Text
 from aiogram.types.message import ContentType
 from aiogram import Bot, Dispatcher, executor, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher import FSMContext
+import aiogram.utils.markdown as md
+import aioschedule
 
 
 bot = Bot(token=TOKEN, parse_mode=types.ParseMode.MARKDOWN)
-loop = asyncio.get_event_loop()
-dp = Dispatcher(bot, loop=loop)
+dp = Dispatcher(bot)
 db = BrotherCryptoBot()
 
 
+# class Mess(StateGroup):
+#     text = State()
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
@@ -26,7 +33,7 @@ async def start(message: types.Message):
 Если у вас возникли вопросы, обратитесь к менеджеру👇\n@username
                                 """, reply_markup=buttons.tarif)
     else:
-        await message.answer('С возвращением!!!')
+        await message.answer('С возвращением!!!', reply_markup=buttons.main_menu)
 
 # -------------------------- Тарифы -------------------------------------
 @dp.message_handler(Text('Тарифы 🚀'))
@@ -108,11 +115,11 @@ async def successful_payment(message: types.Message):
         print(f"{k} = {v}")
     pay = message.successful_payment.total_amount // 100
     if pay == 150:
-        db.set_tarif(user_id=message.from_user.id, tarif=1)
+        db.set_tarif(user_id=message.from_user.id, tarif=1, time=18)
     elif pay == 500:
-        db.set_tarif(user_id=message.from_user.id, tarif=2)
+        db.set_tarif(user_id=message.from_user.id, tarif=2, time=43200)
     else:
-        db.set_tarif(user_id=message.from_user.id, tarif=3)
+        db.set_tarif(user_id=message.from_user.id, tarif=3, time=482880)
     await bot.send_message(message.chat.id,
                             f"Платеж на сумму {pay} {message.successful_payment.currency} прошел успешно!!!")
 # ---------------------------------------------------------------------------
@@ -121,8 +128,11 @@ async def successful_payment(message: types.Message):
 @dp.message_handler(Text('Мой тариф ⏳'))
 async def my_tarif(message: types.Message):
     tar = db.get_tarif(user_id=message.from_user.id)
-    await message.answer(f'Ваш тариф: {tar} уровня' if tar != None else 'Вы еще не приобрели тариф') 
+    time = db.get_time(user_id=message.from_user.id)
 
+    if tar != None:
+        await message.answer(f'Ваш тариф: {tar} уровня\n{mg.decription[tar]}\nОставшееся время: {time}' if tar != None else 'Вы еще не приобрели тариф') 
+    else: await message.answer('Вы ещё не приобрели тариф')
 
 @dp.message_handler(Text('Отзывы 📖'))
 async def answers(message: types.Message):
@@ -138,6 +148,30 @@ async def kurs(message: types.Message):
     else:
         await message.answer('Канал с обучающими уроками и курсами - @канал')
 
+@dp.message_handler(commands=['/send_message'])
+async def send_message(message: types.Message):
+    ...
+
+# @dp.message_handler(state=)
+# async def send_mess(message: types.Message):
+#     users = db.users_with_tarif()
+#     for i in users:
+#         await bot.send_message(i[0], text=my_text)
+
+
+def update_time():
+    users = db.get_all_user_id()
+    while True:
+        for i in users:
+            if i[1] != None:
+                db.set_time(user_id=i[0], time=i[1]-1)
+            else: pass
+        time.sleep(1)
+
+
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    thread = Thread(target=executor.start_polling, args=(dp)).run()
+    # executor.start_polling(dp, skip_updates=True)
+    thread_1 = Thread(target=update_time, daemon=True)
+    thread_1.start()
